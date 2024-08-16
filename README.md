@@ -1,8 +1,18 @@
 <div align="center">
+<h1>Chat中移小智</h1>
 
-<h1>GPT-SoVITS-WebUI</h1>
+> 基于GPT-SoVITS的智能语音聊天助手
+
+
+
+文字回复工程实现截图：
+![文字回复工程实现截图：](https://github.com/user-attachments/assets/5b9883bb-2967-4f08-97ca-59ba22c365b6)
+
+![alt text](/GPT_SoVITS/image.png)
+</div>
+
+<h2>GPT-SoVITS-WebUI</h2>
 A Powerful Few-shot Voice Conversion and Text-to-Speech WebUI.<br><br>
-
 [![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange)](https://github.com/RVC-Boss/GPT-SoVITS)
 
 <img src="https://counter.seku.su/cmoe?name=gptsovits&theme=r34" /><br>
@@ -15,7 +25,7 @@ A Powerful Few-shot Voice Conversion and Text-to-Speech WebUI.<br><br>
 
 [**English**](./README.md) | [**中文简体**](./docs/cn/README.md) | [**日本語**](./docs/ja/README.md) | [**한국어**](./docs/ko/README.md)
 
-</div>
+
 
 ---
 
