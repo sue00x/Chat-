@@ -3,6 +3,7 @@
 新增语音对话功能
 <h2>GPT-SoVITS-WebUI</h2>
 A Powerful Few-shot Voice Conversion and Text-to-Speech WebUI.<br><br>
+![f18815fe1e8fb5f095b5b69f77b341d](https://github.com/user-attachments/assets/45e59fd7-c3e4-4dd4-8788-ed8b0ac9a16e)
 
 [![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange)](https://github.com/RVC-Boss/GPT-SoVITS)
 
