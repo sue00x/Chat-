@@ -1,0 +1,1 @@
+SoVITS_weights/sulin_pipaxing_e8_s584.pth
