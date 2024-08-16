@@ -1,6 +1,7 @@
 <div align="center">
-
-<h1>GPT-SoVITS-WebUI</h1>
+<h1>Chat中移小智</h1>
+新增语音对话功能
+<h2>GPT-SoVITS-WebUI</h2>
 A Powerful Few-shot Voice Conversion and Text-to-Speech WebUI.<br><br>
 
 [![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange)](https://github.com/RVC-Boss/GPT-SoVITS)
