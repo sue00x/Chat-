@@ -17,6 +17,9 @@ logging.getLogger("charset_normalizer").setLevel(logging.ERROR)
 logging.getLogger("torchaudio._extension").setLevel(logging.ERROR)
 import pdb
 import torch
+import io
+from PIL import Image
+from scipy.io.wavfile import write
 
 if os.path.exists("./gweight.txt"):
     with open("./gweight.txt", 'r', encoding="utf-8") as file:
@@ -313,8 +316,8 @@ def merge_short_text_in_array(texts, threshold):
             result[len(result) - 1] += text
     return result
 
-def get_tts_wav(ref_wav_path, prompt_text, prompt_language, ref_free = False):
-    
+def get_tts_wav(ref_wav_path, prompt_text, prompt_language):
+    ref_free = False
     ## 中移小智
     p = pyaudio.PyAudio()
     token = get_access_token(api_key, api_secret)
@@ -451,17 +454,16 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language, ref_free = False):
                 .detach()
                 .cpu()
                 .numpy()[0, 0]
-        )  ###试试重建不带上prompt部分
-        max_audio=np.abs(audio).max()#简单防止16bit爆音
+        )  
+        max_audio=np.abs(audio).max()
         if max_audio>1:audio/=max_audio
         audio_opt.append(audio)
         audio_opt.append(zero_wav)
         t4 = ttime()
     print("%.3f\t%.3f\t%.3f\t%.3f" % (t1 - t0, t2 - t1, t3 - t2, t4 - t3))
-    # 输出采样率和音频数据
-    yield hps.data.sampling_rate, (np.concatenate(audio_opt, 0) * 32768).astype(
-        np.int16
-    )
+
+
+    return hps.data.sampling_rate, (np.concatenate(audio_opt, 0) * 32768).astype(np.int16)
 
 
 
@@ -701,66 +703,108 @@ def speech_to_text(max_audio_time = 8):
         return text['result'][0]
 
 
+custom_css = """
+<style>
+    .welcome-message {
+        font-size: 38px;
+        color: #555;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .tab-title {
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    #refresh-button {
+        height: 100%;  
+        width: 100%;  
+        background-color: #F5F5F5;  
+        color: black;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 26px;
+        transition: background-color 0.3s ease;
+    }
+    #refresh-button:hover {
+        background-color: #DCDCDC;
+        color: white;
+    }
+    #custom-button {
+        height: 100%;  
+        width: 100%;  
+        background-color: #F5F5F5;  
+        color: black;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 16px;
+        transition: background-color 0.3s ease;
+    }
+    #custom-button:hover {
+        background-color: #DCDCDC;
+        color: white;
+    }
+    .dropdown {
+        width: 100%;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+</style>
+"""
 
+with gr.Blocks(title="chat中移小智") as app:
+    gr.Markdown(custom_css)
 
-# with gr.Blocks(title="GPT-SoVITS WebUI") as app:
-#     gr.Markdown(
-#         value=i18n("本软件以MIT协议开源, 作者不对软件具备任何控制力, 使用软件者、传播软件导出的声音者自负全责. <br>如不认可该条款, 则不能使用或引用软件包内任何代码和文件. 详见根目录<b>LICENSE</b>.")
-#     )
-#     with gr.Group():
-#         gr.Markdown(value=i18n("模型切换"))
-#         with gr.Row():
-#             GPT_dropdown = gr.Dropdown(label=i18n("GPT模型列表"), choices=sorted(GPT_names, key=custom_sort_key), value=gpt_path, interactive=True)
-#             SoVITS_dropdown = gr.Dropdown(label=i18n("SoVITS模型列表"), choices=sorted(SoVITS_names, key=custom_sort_key), value=sovits_path, interactive=True)
-#             refresh_button = gr.Button(i18n("刷新模型路径"), variant="primary")
-#             refresh_button.click(fn=change_choices, inputs=[], outputs=[SoVITS_dropdown, GPT_dropdown])
-#             SoVITS_dropdown.change(change_sovits_weights, [SoVITS_dropdown], [])
-#             GPT_dropdown.change(change_gpt_weights, [GPT_dropdown], [])
-#         gr.Markdown(value=i18n("*请上传并填写参考信息"))
-#         with gr.Row():
-#             inp_ref = gr.Audio(label=i18n("请上传3~10秒内参考音频，超过会报错！"), type="filepath")
-#             with gr.Column():
-#                 ref_text_free = gr.Checkbox(label=i18n("开启无参考文本模式。不填参考文本亦相当于开启。"), value=False, interactive=True, show_label=True)
-#                 # gr.Markdown(i18n("使用无参考文本模式时建议使用微调的GPT，听不清参考音频说的啥(不晓得写啥)可以开，开启后无视填写的参考文本。"))
-#                 prompt_text = gr.Textbox(label=i18n("参考音频的文本"), value="")
-#             prompt_language = gr.Dropdown(
-#                 label=i18n("参考音频的语种"), choices=[i18n("中文"), i18n("英文"), i18n("日文"), i18n("中英混合"), i18n("日英混合"), i18n("多语种混合")], value=i18n("中文")
-#             )
-#         gr.Markdown(value=i18n("*chat中移小智"))
-#         with gr.Row():
-#             # audio_input = gr.Audio(source="microphone", type="filepath", label="请录音")
-#             listen_button = gr.Button("let's chat!", variant="primary")
-#             # user_text_output = gr.Textbox(label="录音转录文本", value="", interactive=False)
-#             # chatbot_response = gr.Textbox(label="回复文本", value="", interactive=False)
-#             output = gr.Audio(label=i18n("中移小智："))
-#             output_waveform = gr.Image(label="动态波形")
-
-#         listen_button.click(
-#             get_tts_wav,
-#             [inp_ref, prompt_text, prompt_language, ref_text_free],
-#             [output, output_waveform],
-#         )    
-
-
-with gr.Blocks(title="对话式GPT-SoVITS WebUI") as app:
-    # gr.Markdown(
-    #     "本软件以MIT协议开源, 作者不对软件具备任何控制力, 使用软件者、传播软件导出的声音者自负全责。<br>如不认可该条款，则不能使用或引用软件包内任何代码和文件。详见根目录<b>LICENSE</b>."
-    # )    
+    # 欢迎信息
     gr.Markdown(
-        "本软件以MIT协议开源, 作者不对软件具备任何控制力, 使用软件者、传播软件导出的声音者自负全责。<br>如不认可该条款，则不能使用或引用软件包内任何代码和文件。详见根目录<b>LICENSE</b>."
-    )
+        """
 
-    # 模型切换
-    with gr.Tab("模型设置"):
-        gr.Markdown("### 模型切换")
-        with gr.Row():
-            GPT_dropdown = gr.Dropdown(label=i18n("GPT模型列表"), choices=sorted(GPT_names, key=custom_sort_key), value=gpt_path, interactive=True)
-            SoVITS_dropdown = gr.Dropdown(label=i18n("SoVITS模型列表"), choices=sorted(SoVITS_names, key=custom_sort_key), value=sovits_path, interactive=True)
-            refresh_button = gr.Button("刷新模型列表", variant="primary")
-            refresh_button.click(fn=change_choices, inputs=[], outputs=[SoVITS_dropdown, GPT_dropdown])
-            SoVITS_dropdown.change(change_sovits_weights, [SoVITS_dropdown], [])
-            GPT_dropdown.change(change_gpt_weights, [GPT_dropdown], [])
+        <div class="welcome-message">
+            欢迎使用对话式中移小智！
+        </div>
+
+        """,
+
+    )
     
+    # 模型切换
+    with gr.Tab("精准音色选取"):
+        gr.Markdown("### 模型切换", elem_id="tab-title")
+        gr.Markdown("#### 如果想体验库以外的音色，可以选取第一选项，再在参考音频中上传音频信息", elem_id="tab-title")
+
+        
+        with gr.Row():
+            # 按钮和下拉菜单的样式
+            with gr.Column(scale=4):
+                refresh_button = gr.Button("刷新模型", variant="primary", elem_id="refresh-button")
+            
+            with gr.Column(scale=4):
+                GPT_dropdown = gr.Dropdown(
+                    label=i18n("GPT模型选取"),
+                    choices=sorted(GPT_names, key=custom_sort_key),
+                    value=gpt_path,
+                    interactive=True,
+                    elem_id="gpt-dropdown",
+                    css_class="dropdown"
+                )
+                SoVITS_dropdown = gr.Dropdown(
+                    label=i18n("SoVITS模型选取"),
+                    choices=sorted(SoVITS_names, key=custom_sort_key),
+                    value=sovits_path,
+                    interactive=True,
+                    elem_id="sovits-dropdown",
+                    css_class="dropdown"
+                )
+        
+        # 设置按钮和下拉菜单的交互
+        refresh_button.click(fn=change_choices, inputs=[], outputs=[SoVITS_dropdown, GPT_dropdown])
+        SoVITS_dropdown.change(change_sovits_weights, [SoVITS_dropdown], [])
+        GPT_dropdown.change(change_gpt_weights, [GPT_dropdown], [])
+
     # 参考音频设置
     with gr.Tab("参考音频"):
         gr.Markdown("### 参考音频设置")
@@ -770,85 +814,47 @@ with gr.Blocks(title="对话式GPT-SoVITS WebUI") as app:
                 type="filepath"
             )
             with gr.Column():
-                ref_text_free = gr.Checkbox(
-                    label="开启无参考文本模式",
-                    value=False,
-                    interactive=True
-                )
                 prompt_text = gr.Textbox(
                     label="参考音频的文本",
                     value=""
                 )
-            prompt_language = gr.Dropdown(
-                label="参考音频的语种", 
-                choices=[
-                    "中文", "英文", "日文", "中英混合", "日英混合", "多语种混合"
-                ], 
-                value="中文"
-            )
+                prompt_language = gr.Dropdown(
+                    label="参考音频的语种", 
+                    choices=[
+                        "中文", "英文", "日文", "中英混合", "日英混合", "多语种混合"
+                    ], 
+                    value="中文"
+                )
     
     # 对话功能
     with gr.Tab("对话"):
-        gr.Markdown("### 与中移小智对话")
+        # gr.Markdown("### 与中移小智对话")
         with gr.Row():
-            listen_button = gr.Button("开始对话", variant="primary")
+            # 在自定义的 div 容器中插入按钮
+            with gr.Column():
+                gr.HTML('<div class="custom-button">')
+                listen_button = gr.Button("开始对话", variant="primary", elem_id="custom-button")
+                gr.HTML('</div>')
+            
+        with gr.Row():
             output = gr.Audio(
-                label="中移小智："
-            )
+                label="中移小智：",
+                show_waveform=True
+            )            
+            # outputtext = gr.Textbox(
+            #     label="中移小智：",
+            #     show_waveform=True
+            # )
             # output_waveform = gr.Image(
             #     label="动态波形"
             # )
-        
+ 
         listen_button.click(
             get_tts_wav,
-            [inp_ref, prompt_text, prompt_language, ref_text_free],
+            [inp_ref, prompt_text, prompt_language],
             [output]
         )
  
-        
-        # gr.Markdown(value=i18n("*请填写需要合成的目标文本和语种模式"))
-        # with gr.Row():
-        #     # text = gr.Textbox(label=i18n("需要合成的文本"), value="")
-        #     text = chatbot_response
-        #     text_language = gr.Dropdown(
-        #         label=i18n("需要合成的语种"), choices=[i18n("中文"), i18n("英文"), i18n("日文"), i18n("中英混合"), i18n("日英混合"), i18n("多语种混合")], value=i18n("中文")
-        #     )
-        #     how_to_cut = gr.Radio(
-        #         label=i18n("怎么切"),
-        #         choices=[i18n("不切"), i18n("凑四句一切"), i18n("凑50字一切"), i18n("按中文句号。切"), i18n("按英文句号.切"), i18n("按标点符号切"), ],
-        #         value=i18n("凑四句一切"),
-        #         interactive=True,
-        #     )
-        #     with gr.Row():
-        #         gr.Markdown(value=i18n("gpt采样参数(无参考文本时不要太低)："))
-        #         top_k = gr.Slider(minimum=1,maximum=100,step=1,label=i18n("top_k"),value=5,interactive=True)
-        #         top_p = gr.Slider(minimum=0,maximum=1,step=0.05,label=i18n("top_p"),value=1,interactive=True)
-        #         temperature = gr.Slider(minimum=0,maximum=1,step=0.05,label=i18n("temperature"),value=1,interactive=True)
-        #     inference_button = gr.Button(i18n("合成语音"), variant="primary")
-            # output = gr.Audio(label=i18n("输出的语音"))
-            
-
-        # inference_button.click(
-        #     get_tts_wav,
-        #     [inp_ref, prompt_text, prompt_language, text, text_language, how_to_cut, top_k, top_p, temperature, ref_text_free],
-        #     [output],
-        # )
-
-        gr.Markdown(value=i18n("文本切分工具。太长的文本合成出来效果不一定好，所以太长建议先切。合成会根据文本的换行分开合成再拼起来。"))
-        with gr.Row():
-            text_inp = gr.Textbox(label=i18n("需要合成的切分前文本"), value="")
-            # button1 = gr.Button(i18n("凑四句一切"), variant="primary")
-            button2 = gr.Button(i18n("凑50字一切"), variant="primary")
-            # button3 = gr.Button(i18n("按中文句号。切"), variant="primary")
-            # button4 = gr.Button(i18n("按英文句号.切"), variant="primary")
-            # button5 = gr.Button(i18n("按标点符号切"), variant="primary")
-            text_opt = gr.Textbox(label=i18n("切分后文本"), value="")
-            # button1.click(cut1, [text_inp], [text_opt])
-            button2.click(cut2, [text_inp], [text_opt])
-            # button3.click(cut3, [text_inp], [text_opt])
-            # button4.click(cut4, [text_inp], [text_opt])
-            # button5.click(cut5, [text_inp], [text_opt])
-        gr.Markdown(value=i18n("后续将支持转音素、手工修改音素、语音合成分步执行。"))
 
 app.queue(concurrency_count=511, max_size=1022).launch(
     server_name="0.0.0.0",
