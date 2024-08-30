@@ -20,6 +20,13 @@ import torch
 import io
 from PIL import Image
 from scipy.io.wavfile import write
+import tempfile
+import gradio as gr
+import requests
+import speech_recognition as sr
+from aip import AipSpeech
+import json
+import pyaudio
 
 if os.path.exists("./gweight.txt"):
     with open("./gweight.txt", 'r', encoding="utf-8") as file:
@@ -318,6 +325,7 @@ def merge_short_text_in_array(texts, threshold):
 
 def get_tts_wav(ref_wav_path, prompt_text, prompt_language):
     ref_free = False
+    ref = True
     ## 中移小智
     p = pyaudio.PyAudio()
     token = get_access_token(api_key, api_secret)
@@ -331,7 +339,7 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language):
 
     
     access_token = token
-    ask_text = speech_to_text(6)
+    temp_wav_path, ask_text = speech_to_text(6)
     print('\n用户:', ask_text,'\n')
     result = send_message(assistant_id, access_token, ask_text)
     if result != None:
@@ -340,6 +348,8 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language):
     text = result
     if prompt_text is None or len(prompt_text) == 0:
         ref_free = True
+        ref_wav_path = temp_wav_path
+        ref = False
     t0 = ttime()
     prompt_language = dict_language[prompt_language]
     # text_language = dict_language[text_language]
@@ -363,7 +373,7 @@ def get_tts_wav(ref_wav_path, prompt_text, prompt_language):
     )
     with torch.no_grad():
         wav16k, sr = librosa.load(ref_wav_path, sr=16000)
-        if (wav16k.shape[0] > 160000 or wav16k.shape[0] < 48000):
+        if ((wav16k.shape[0] > 160000 or wav16k.shape[0] < 48000) and ref):
             raise OSError(i18n("参考音频在3~10秒范围外，请更换！"))
         wav16k = torch.from_numpy(wav16k)
         zero_wav_torch = torch.from_numpy(zero_wav)
@@ -585,12 +595,7 @@ SoVITS_names, GPT_names = get_weights_names()
 """
 中移小智
 """
-import gradio as gr
-import requests
-import speech_recognition as sr
-from aip import AipSpeech
-import json
-import pyaudio
+
 
 def get_access_token(api_key, api_secret):
     url = "https://chatglm.cn/chatglm/assistant-api/v1/get_token"
@@ -699,8 +704,11 @@ def speech_to_text(max_audio_time = 8):
                 'dev_pid': 1537,
             }
         )
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_wav:
+            temp_wav.write(audio.get_wav_data(convert_rate=16000))
+            temp_wav_path = temp_wav.name
         print('您说的是：', text['result'][0])
-        return text['result'][0]
+        return temp_wav_path, text['result'][0]
 
 
 custom_css = """
@@ -762,20 +770,16 @@ with gr.Blocks(title="chat中移小智") as app:
     # 欢迎信息
     gr.Markdown(
         """
-
         <div class="welcome-message">
             欢迎使用对话式中移小智！
         </div>
-
         """,
-
     )
     
     # 模型切换
     with gr.Tab("精准音色选取"):
         gr.Markdown("### 模型切换", elem_id="tab-title")
-        gr.Markdown("#### 如果想体验库以外的音色，可以选取第一选项，再在参考音频中上传音频信息", elem_id="tab-title")
-
+        gr.Markdown("#### 如果想体验库以外的音色, 请选取第一选项", elem_id="tab-title")
         
         with gr.Row():
             # 按钮和下拉菜单的样式
@@ -800,7 +804,6 @@ with gr.Blocks(title="chat中移小智") as app:
                     css_class="dropdown"
                 )
         
-        # 设置按钮和下拉菜单的交互
         refresh_button.click(fn=change_choices, inputs=[], outputs=[SoVITS_dropdown, GPT_dropdown])
         SoVITS_dropdown.change(change_sovits_weights, [SoVITS_dropdown], [])
         GPT_dropdown.change(change_gpt_weights, [GPT_dropdown], [])
@@ -808,6 +811,8 @@ with gr.Blocks(title="chat中移小智") as app:
     # 参考音频设置
     with gr.Tab("参考音频"):
         gr.Markdown("### 参考音频设置")
+        gr.Markdown("#### 如果没有参考音频，可直接跳至对话", elem_id="tab-title")
+
         with gr.Row():
             inp_ref = gr.Audio(
                 label="上传参考音频（3~10秒内）", 
@@ -828,9 +833,7 @@ with gr.Blocks(title="chat中移小智") as app:
     
     # 对话功能
     with gr.Tab("对话"):
-        # gr.Markdown("### 与中移小智对话")
         with gr.Row():
-            # 在自定义的 div 容器中插入按钮
             with gr.Column():
                 gr.HTML('<div class="custom-button">')
                 listen_button = gr.Button("开始对话", variant="primary", elem_id="custom-button")
@@ -841,13 +844,6 @@ with gr.Blocks(title="chat中移小智") as app:
                 label="中移小智：",
                 show_waveform=True
             )            
-            # outputtext = gr.Textbox(
-            #     label="中移小智：",
-            #     show_waveform=True
-            # )
-            # output_waveform = gr.Image(
-            #     label="动态波形"
-            # )
  
         listen_button.click(
             get_tts_wav,
