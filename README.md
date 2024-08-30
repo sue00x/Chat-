@@ -5,10 +5,10 @@
 
 </div>
 
-![alt text](img\image.png)
+![alt text](img/image.png)
 --
 新增无参考音频 直接对话
-![alt text](img\image-1.png)
+![alt text](img/image-1.png)
 
 ## 功能：
 
